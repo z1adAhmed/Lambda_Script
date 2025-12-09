@@ -19,7 +19,7 @@ def lambda_handler(event, context):
 
     data = []
     for line in response["Body"].read().splitlines():
-        data.append(line.decode('utf-8').replace('z', 'm'))
+        data.append(line.decode('utf-8').replace('f', 'y'))
 
     new_key = "output/output.txt"   # ✅ put in a folder
     s3.put_object(
