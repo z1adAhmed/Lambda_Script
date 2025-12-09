@@ -1,4 +1,4 @@
-name: Upload Lambda Code to S3
+name: Upload Lambda Code & Trigger Infra
 
 on:
   push:
@@ -24,3 +24,11 @@ jobs:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_REGION: ${{ secrets.AWS_REGION }}
+
+      - name: Trigger Infra Repo Workflow
+        uses: peter-evans/repository-dispatch@v2
+        with:
+          token: ${{ secrets.PERSONAL_ACCESS_TOKEN }} # triggers infra repo
+          repository: z1adAhmed/lambda_divison
+          event-type: code-updated
+          client-payload: '{"branch":"main"}'
