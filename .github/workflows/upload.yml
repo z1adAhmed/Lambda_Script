@@ -15,12 +15,20 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Zip each script in test directory
+      - name: Get changed Python files in test/
+        id: changed_files
+        run: |
+          echo "CHANGED_FILES=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }} -- test/*.py)" >> $GITHUB_ENV
+          echo "Changed files: $CHANGED_FILES"
+
+      - name: Zip only changed scripts
         run: |
           mkdir -p zipped
-          for file in test/*.py; do
-            filename=$(basename "$file" .py)
-            zip "zipped/${filename}.zip" "$file"
+          for file in $CHANGED_FILES; do
+            if [ -f "$file" ]; then
+              filename=$(basename "$file" .py)
+              zip "zipped/${filename}.zip" "$file"
+            fi
           done
 
       - name: Upload ZIPs to S3
