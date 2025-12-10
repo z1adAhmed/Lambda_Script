@@ -13,13 +13,19 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Zip Lambda code
+      - name: Zip each script in test directory
         run: |
-          zip lambda.zip lambda_function.py
+          mkdir -p zipped
+          for file in test/*.py; do
+            filename=$(basename "$file" .py)
+            zip "zipped/${filename}.zip" "$file"
+          done
 
-      - name: Upload ZIP to S3
+      - name: Upload ZIPs to S3
         run: |
-          aws s3 cp lambda.zip s3://lambda-artifacts-ziad/lambda/lambda.zip
+          for zipfile in zipped/*.zip; do
+            aws s3 cp "$zipfile" "s3://lambda-artifacts-ziad/lambda/$(basename $zipfile)"
+          done
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -28,7 +34,7 @@ jobs:
       - name: Trigger Infra Repo Workflow
         uses: peter-evans/repository-dispatch@v2
         with:
-          token: ${{ secrets.PERSONAL_ACCESS_TOKEN }} # triggers infra repo
+          token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
           repository: z1adAhmed/lambda_divison
           event-type: code-updated
           client-payload: '{"branch":"main"}'
