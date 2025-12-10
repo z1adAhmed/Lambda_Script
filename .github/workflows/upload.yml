@@ -14,24 +14,33 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # fetch full history for git diff to work
 
       - name: Get changed Python files in test/
         id: changed_files
         run: |
-          echo "CHANGED_FILES=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }} -- test/*.py)" >> $GITHUB_ENV
+          # Get list of changed Python files in 'test/' between previous commit and current
+          CHANGED_FILES=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }} -- 'test/*.py')
+          echo "CHANGED_FILES=$CHANGED_FILES" >> $GITHUB_ENV
           echo "Changed files: $CHANGED_FILES"
 
       - name: Zip only changed scripts
         run: |
           mkdir -p zipped
-          for file in $CHANGED_FILES; do
-            if [ -f "$file" ]; then
-              filename=$(basename "$file" .py)
-              zip "zipped/${filename}.zip" "$file"
-            fi
-          done
+          if [ -z "$CHANGED_FILES" ]; then
+            echo "No changed Python files to zip."
+          else
+            for file in $CHANGED_FILES; do
+              if [ -f "$file" ]; then
+                filename=$(basename "$file" .py)
+                zip -j "zipped/${filename}.zip" "$file"
+              fi
+            done
+          fi
 
       - name: Upload ZIPs to S3
+        if: ${{ env.CHANGED_FILES != '' }}
         run: |
           for zipfile in zipped/*.zip; do
             aws s3 cp "$zipfile" "s3://lambda-artifacts-ziad/lambda/$(basename $zipfile)"
@@ -42,6 +51,7 @@ jobs:
           AWS_REGION: ${{ secrets.AWS_REGION }}
 
       - name: Trigger Infra Repo Workflow
+        if: ${{ env.CHANGED_FILES != '' }}
         uses: peter-evans/repository-dispatch@v2
         with:
           token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
