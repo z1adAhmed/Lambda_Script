@@ -10,16 +10,33 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Ensure full history for git diff
 
-      - name: Zip each script in prod directory
+      - name: Get changed Python files in prod/
+        id: changed_files
+        run: |
+          # Get list of changed Python files in 'prod/' compared to previous commit
+          CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD -- 'prod/*.py')
+          echo "CHANGED_FILES=$CHANGED_FILES" >> $GITHUB_ENV
+          echo "Changed files: $CHANGED_FILES"
+
+      - name: Zip only changed scripts
         run: |
           mkdir -p zipped
-          for file in prod/*.py; do
-            filename=$(basename "$file" .py)
-            zip "zipped/${filename}.zip" "$file"
-          done
+          if [ -z "$CHANGED_FILES" ]; then
+            echo "No changed Python files to zip."
+          else
+            for file in $CHANGED_FILES; do
+              if [ -f "$file" ]; then
+                filename=$(basename "$file" .py)
+                zip -j "zipped/${filename}.zip" "$file"
+              fi
+            done
+          fi
 
       - name: Upload ZIPs to S3
+        if: ${{ env.CHANGED_FILES != '' }}
         run: |
           for zipfile in zipped/*.zip; do
             aws s3 cp "$zipfile" "s3://lambda-prod-artifacts-ziad/lambda/$(basename $zipfile)"
