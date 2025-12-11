@@ -4,8 +4,8 @@ on:
   workflow_dispatch:
     inputs:
       files:
-        description: "Files to deploy (comma separated, e.g., script1.py,script2.py). Leave empty to deploy all scripts."
-        required: false
+        description: "Comma-separated list of Python files to deploy (e.g., script1.py,script2.py)"
+        required: true
 
 jobs:
   deploy:
@@ -17,21 +17,16 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Get files to deploy
+      - name: Prepare files to deploy
         id: changed_files
         run: |
-          if [ -n "${{ github.event.inputs.files }}" ]; then
-            # Use input files from the user
-            CHANGED_FILES="${{ github.event.inputs.files }}"
-            CHANGED_FILES="${CHANGED_FILES//,/ }"
-          else
-            # No input given: deploy all Python scripts
-            CHANGED_FILES=$(ls scripts/*.py)
-          fi
+          # Convert comma-separated input into space-separated list
+          CHANGED_FILES="${{ github.event.inputs.files }}"
+          CHANGED_FILES="${CHANGED_FILES//,/ }"
           echo "CHANGED_FILES=$CHANGED_FILES" >> $GITHUB_ENV
           echo "Files to deploy: $CHANGED_FILES"
 
-      - name: Zip scripts
+      - name: Zip input files
         run: |
           mkdir -p zipped
           for file in $CHANGED_FILES; do
@@ -46,9 +41,13 @@ jobs:
 
       - name: Upload ZIPs to S3
         run: |
-          for zipfile in zipped/*.zip; do
-            aws s3 cp "$zipfile" "s3://lambda-prod-artifacts-ziad/lambda/$(basename $zipfile)"
-          done
+          if compgen -G "zipped/*.zip" > /dev/null; then
+            for zipfile in zipped/*.zip; do
+              aws s3 cp "$zipfile" "s3://lambda-prod-artifacts-ziad/lambda/$(basename $zipfile)"
+            done
+          else
+            echo "No ZIP files to upload."
+          fi
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
