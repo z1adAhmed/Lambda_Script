@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       files:
-        description: "Comma-separated list of Python files to deploy (e.g., script1.py,script2.py)"
+        description: "Comma-separated list of Python files to deploy (e.g., lambda1.py,lambda2.py)"
         required: true
 
 jobs:
@@ -21,8 +21,20 @@ jobs:
         id: changed_files
         run: |
           # Convert comma-separated input into space-separated list
-          CHANGED_FILES="${{ github.event.inputs.files }}"
-          CHANGED_FILES="${CHANGED_FILES//,/ }"
+          INPUT_FILES="${{ github.event.inputs.files }}"
+          INPUT_FILES="${INPUT_FILES//,/ }"
+
+          # Prefix with scripts/ if not already
+          CHANGED_FILES=""
+          for f in $INPUT_FILES; do
+            if [[ "$f" != scripts/* ]]; then
+              f="scripts/$f"
+            fi
+            CHANGED_FILES="$CHANGED_FILES $f"
+          done
+
+          # Trim leading space and save to environment
+          CHANGED_FILES="${CHANGED_FILES## }"
           echo "CHANGED_FILES=$CHANGED_FILES" >> $GITHUB_ENV
           echo "Files to deploy: $CHANGED_FILES"
 
