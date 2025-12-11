@@ -1,35 +1,31 @@
 name: Upload Lambda & Deploy Terraform
 
 on:
-  workflow_dispatch: # Manual trigger
+  push:
+    branches:
+      - main
+    paths:
+      - "scripts/**"
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     steps:
-      # 1️⃣ Checkout full history
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # Needed for git diff to work properly
+          fetch-depth: 0
 
-      # 2️⃣ Fetch latest main branch for comparison
-      - name: Fetch latest main branch
-        run: git fetch origin main
-
-      # 3️⃣ Detect changed Python files in scripts/
       - name: Get changed Python files
         id: changed_files
         run: |
-          # Compare current commit with latest main branch
-          CHANGED_FILES=$(git diff --name-only origin/main HEAD -- 'scripts/*.py' || true)
-          # Replace newlines with spaces for GitHub env
+          CHANGED_FILES=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }} -- 'scripts/*.py' || true)
+          # Replace newlines with spaces for safe $GITHUB_ENV
           CHANGED_FILES="${CHANGED_FILES//$'\n'/ }"
           echo "CHANGED_FILES=$CHANGED_FILES" >> $GITHUB_ENV
           echo "Changed files: $CHANGED_FILES"
 
-      # 4️⃣ Zip only the changed Python scripts
       - name: Zip changed scripts
         run: |
           mkdir -p zipped
@@ -45,7 +41,6 @@ jobs:
             done
           fi
 
-      # 5️⃣ Upload ZIPs to S3 if there are changed files
       - name: Upload ZIPs to S3
         if: ${{ env.CHANGED_FILES != '' }}
         run: |
@@ -57,25 +52,22 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_REGION: ${{ secrets.AWS_REGION }}
 
-      # 6️⃣ Setup Terraform
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v2
         with:
           terraform_version: 1.7.0
 
-      # 7️⃣ Initialize Terraform in prod directory
       - name: Terraform Init
-        working-directory: prod
+        working-directory: test
         run: terraform init
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_REGION: ${{ secrets.AWS_REGION }}
 
-      # 8️⃣ Apply Terraform only if there are changed files
       - name: Terraform Apply
         if: ${{ env.CHANGED_FILES != '' }}
-        working-directory: prod
+        working-directory: test
         run: terraform apply -auto-approve
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
