@@ -12,19 +12,19 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # Ensure full history so we can diff commits
+          fetch-depth: 0 # Needed for git diff to work properly
 
-      # 2️⃣ Fetch latest main branch for diff comparison
+      # 2️⃣ Fetch latest main branch for comparison
       - name: Fetch latest main branch
         run: git fetch origin main
 
-      # 3️⃣ Detect changed Python files in prod/
-      - name: Get changed Python files in prod/
+      # 3️⃣ Detect changed Python files in scripts/
+      - name: Get changed Python files
         id: changed_files
         run: |
           # Compare current commit with latest main branch
-          CHANGED_FILES=$(git diff --name-only origin/main HEAD -- 'prod/*.py' || true)
-          # Replace newlines with spaces for GitHub environment variable
+          CHANGED_FILES=$(git diff --name-only origin/main HEAD -- 'scripts/*.py' || true)
+          # Replace newlines with spaces for GitHub env
           CHANGED_FILES="${CHANGED_FILES//$'\n'/ }"
           echo "CHANGED_FILES=$CHANGED_FILES" >> $GITHUB_ENV
           echo "Changed files: $CHANGED_FILES"
@@ -45,7 +45,7 @@ jobs:
             done
           fi
 
-      # 5️⃣ Upload ZIPs to S3 only if there are changed files
+      # 5️⃣ Upload ZIPs to S3 if there are changed files
       - name: Upload ZIPs to S3
         if: ${{ env.CHANGED_FILES != '' }}
         run: |
