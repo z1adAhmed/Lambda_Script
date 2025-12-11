@@ -11,12 +11,15 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 0 # Needed to get full git history for diff
 
       - name: Get changed Python files
         id: changed_files
         run: |
-          CHANGED_FILES=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }} -- 'scripts/*.py' || true)
+          # Compare current commit with main branch
+          CHANGED_FILES=$(git diff --name-only origin/main -- 'scripts/*.py' || true)
+          # Replace newlines with spaces for GitHub env
+          CHANGED_FILES="${CHANGED_FILES//$'\n'/ }"
           echo "CHANGED_FILES=$CHANGED_FILES" >> $GITHUB_ENV
           echo "Changed files: $CHANGED_FILES"
 
@@ -60,6 +63,7 @@ jobs:
           AWS_REGION: ${{ secrets.AWS_REGION }}
 
       - name: Terraform Apply
+        if: ${{ env.CHANGED_FILES != '' }}
         working-directory: prod
         run: terraform apply -auto-approve
         env:
