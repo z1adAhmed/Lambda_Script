@@ -1,31 +1,26 @@
-name: Upload Lambda Code & Trigger Infra
+name: Upload Lambda & Deploy Terraform
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - "test/**"
+  workflow_dispatch: # Manual trigger
 
 jobs:
-  upload:
+  deploy:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # fetch full history for git diff to work
+          fetch-depth: 0
 
-      - name: Get changed Python files in test/
+      - name: Get changed Python files
         id: changed_files
         run: |
-          # Get list of changed Python files in 'test/' between previous commit and current
-          CHANGED_FILES=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }} -- 'test/*.py')
+          CHANGED_FILES=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }} -- 'scripts/*.py' || true)
           echo "CHANGED_FILES=$CHANGED_FILES" >> $GITHUB_ENV
           echo "Changed files: $CHANGED_FILES"
 
-      - name: Zip only changed scripts
+      - name: Zip changed scripts
         run: |
           mkdir -p zipped
           if [ -z "$CHANGED_FILES" ]; then
@@ -35,6 +30,7 @@ jobs:
               if [ -f "$file" ]; then
                 filename=$(basename "$file" .py)
                 zip -j "zipped/${filename}.zip" "$file"
+                echo "Zipped $file"
               fi
             done
           fi
@@ -43,18 +39,30 @@ jobs:
         if: ${{ env.CHANGED_FILES != '' }}
         run: |
           for zipfile in zipped/*.zip; do
-            aws s3 cp "$zipfile" "s3://lambda-artifacts-ziad/lambda/$(basename $zipfile)"
+            aws s3 cp "$zipfile" "s3://lambda-prod-artifacts-ziad/lambda/$(basename $zipfile)"
           done
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_REGION: ${{ secrets.AWS_REGION }}
 
-      - name: Trigger Infra Repo Workflow
-        if: ${{ env.CHANGED_FILES != '' }}
-        uses: peter-evans/repository-dispatch@v2
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
         with:
-          token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
-          repository: z1adAhmed/lambda_divison
-          event-type: code-updated
-          client-payload: '{"branch":"main"}'
+          terraform_version: 1.7.0
+
+      - name: Terraform Init
+        working-directory: prod
+        run: terraform init
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+
+      - name: Terraform Apply
+        working-directory: prod
+        run: terraform apply -auto-approve
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: ${{ secrets.AWS_REGION }}
