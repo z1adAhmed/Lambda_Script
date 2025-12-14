@@ -27,6 +27,9 @@ resource "aws_lambda_function" "lambda1_prod" {
   memory_size   = 128
   timeout       = 3
   package_type  = "Zip"
+    layers = [
+    "arn:aws:lambda:eu-west-1:724772084347:layer:Lambda-layer-test:1"
+  ]
 
   ephemeral_storage {
     size = 512
@@ -67,6 +70,9 @@ resource "aws_lambda_function" "lambda2_prod" {
   memory_size   = 128
   timeout       = 3
   package_type  = "Zip"
+    layers = [
+    "arn:aws:lambda:eu-west-1:724772084347:layer:Lambda-layer-test:1"
+  ]
 
   ephemeral_storage {
     size = 512
