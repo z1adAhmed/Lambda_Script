@@ -41,38 +41,32 @@ jobs:
       - name: Pre-approval deployment summary
         run: |
           CHANGED_FILES="${{ steps.prepare.outputs.changed_files }}"
-          echo "## 🛑 Production Deployment Approval Required"
-          echo ""
-          echo "**Triggered by:** ${{ github.actor }}"
-          echo "**Environment:** PROD"
-          echo "**Commit:** ${{ github.sha }}"
-          echo ""
-          echo "### 📌 Deployment intent"
-          echo "The following Lambda functions WILL be updated if this deployment is approved:"
-          echo ""
+          echo "## 🛑 Production Deployment Approval Required" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Triggered by:** ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Environment:** PROD" >> $GITHUB_STEP_SUMMARY
+          echo "**Commit:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📌 Deployment intent" >> $GITHUB_STEP_SUMMARY
+          echo "The following Lambda functions WILL be updated if this deployment is approved:" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
           for file in $CHANGED_FILES; do
             lambda_name=$(basename "$file" .py)
-            echo "- \`$lambda_name\` (from \`$file\`)"
+            echo "- \`$lambda_name\` (from \`$file\`)" >> $GITHUB_STEP_SUMMARY
           done
-          echo ""
-          echo "### ⚠️ Approval impact"
-          echo "- Script files will be zipped"
-          echo "- Artifacts will be uploaded to S3"
-          echo "- Terraform will update Lambda code references"
-          echo ""
-          echo "**No changes have been applied yet.**"
-          echo ""
-          # Write to job summary so reviewer sees it in UI
-          echo "## Deployment summary" >> $GITHUB_STEP_SUMMARY
-          for file in $CHANGED_FILES; do
-            echo "- $file" >> $GITHUB_STEP_SUMMARY
-          done
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### ⚠️ Approval impact" >> $GITHUB_STEP_SUMMARY
+          echo "- Script files will be zipped" >> $GITHUB_STEP_SUMMARY
+          echo "- Artifacts will be uploaded to S3" >> $GITHUB_STEP_SUMMARY
+          echo "- Terraform will update Lambda code references" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**No changes have been applied yet.**" >> $GITHUB_STEP_SUMMARY
+
   deploy:
     runs-on: ubuntu-latest
     needs: pre_approval_summary
     environment:
       name: prod
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
