@@ -1,5 +1,5 @@
 def lambda_handler(event, context):
-    print("Mr Hammad")
+    print("Aish")
     return {
         "statusCode": 200,
         "body": "Hello World"
