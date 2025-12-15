@@ -36,7 +36,6 @@ jobs:
 
           CHANGED_FILES="${CHANGED_FILES## }"
           echo "CHANGED_FILES=$CHANGED_FILES"
-          echo "::set-output name=changed_files::$CHANGED_FILES"
 
       - name: Pre-approval deployment summary
         run: |
@@ -48,11 +47,10 @@ jobs:
           echo "**Commit:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### 📌 Deployment intent" >> $GITHUB_STEP_SUMMARY
-          echo "The following Lambda functions WILL be updated if this deployment is approved:" >> $GITHUB_STEP_SUMMARY
+          echo "The following Lambda functions scripts WILL be deployed if this deployment is approved:" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           for file in $CHANGED_FILES; do
-            lambda_name=$(basename "$file" .py)
-            echo "- \`$lambda_name\` (from \`$file\`)" >> $GITHUB_STEP_SUMMARY
+            echo "$file"
           done
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### ⚠️ Approval impact" >> $GITHUB_STEP_SUMMARY
